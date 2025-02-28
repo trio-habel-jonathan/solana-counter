@@ -51,6 +51,11 @@
     bn.js "^5.1.2"
     buffer-layout "^1.2.0"
 
+"@netlify/plugin-nextjs@^5.9.4":
+  version "5.9.4"
+  resolved "https://registry.npmjs.org/@netlify/plugin-nextjs/-/plugin-nextjs-5.9.4.tgz"
+  integrity sha512-Q9qyhGUxFuM3kuWmoaj4yHPUfHhOsZmwdsQv4kIXkBWVu8FOe0RFHRP0A0EXciSVFGwq+XAo3H5jEtVSANAOWw==
+
 "@noble/curves@^1.4.2":
   version "1.8.1"
   resolved "https://registry.npmjs.org/@noble/curves/-/curves-1.8.1.tgz"
