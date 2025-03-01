@@ -5,27 +5,27 @@
     {
       "name": "initialize",
       "accounts": [
-        { "name": "counter", "isMut": true, "isSigner": false },
+        { "name": "counter", "isMut": true, "isSigner": false, "pda": { "seeds": [{ "kind": "const", "value": [99, 111, 117, 110, 116, 101, 114] }] } },
         { "name": "user", "isMut": true, "isSigner": true },
-        { "name": "systemProgram", "isMut": false, "isSigner": false }
+        { "name": "systemProgram", "isMut": false, "isSigner": false, "address": "11111111111111111111111111111111" }
       ],
       "args": []
     },
     {
       "name": "increment",
       "accounts": [
-        { "name": "counter", "isMut": true, "isSigner": false },
+        { "name": "counter", "isMut": true, "isSigner": false, "pda": { "seeds": [{ "kind": "const", "value": [99, 111, 117, 110, 116, 101, 114] }] } },
         { "name": "user", "isMut": true, "isSigner": true },
-        { "name": "systemProgram", "isMut": false, "isSigner": false }
+        { "name": "systemProgram", "isMut": false, "isSigner": false, "address": "11111111111111111111111111111111" }
       ],
       "args": [{ "name": "payment", "type": "u64" }]
     },
     {
       "name": "decrement",
       "accounts": [
-        { "name": "counter", "isMut": true, "isSigner": false },
+        { "name": "counter", "isMut": true, "isSigner": false, "pda": { "seeds": [{ "kind": "const", "value": [99, 111, 117, 110, 116, 101, 114] }] } },
         { "name": "user", "isMut": true, "isSigner": true },
-        { "name": "systemProgram", "isMut": false, "isSigner": false }
+        { "name": "systemProgram", "isMut": false, "isSigner": false, "address": "11111111111111111111111111111111" }
       ],
       "args": [{ "name": "payment", "type": "u64" }]
     }

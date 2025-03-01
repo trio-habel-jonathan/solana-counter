@@ -14,20 +14,29 @@ const PROGRAM_ID = new PublicKey(
   "DGmJsbjsife1p3QoueUruomvJXLaYXMwqEFgE4bV4xrg"
 );
 
+// Definisi tipe untuk Solana window
+interface SolanaWindow extends Window {
+  solana?: {
+    isPhantom?: boolean;
+    connect: (options?: { onlyIfTrusted: boolean }) => Promise<{ publicKey: PublicKey }>;
+    disconnect: () => Promise<void>;
+  };
+}
+
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [counter, setCounter] = useState<number>(0);
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [provider, setProvider] = useState<any>(null);
+  const [provider, setProvider] = useState<anchor.AnchorProvider | null>(null);
   const [counterAccount, setCounterAccount] = useState<PublicKey | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
-  const getProvider = () => {
+  const getProvider = (): anchor.AnchorProvider | null => {
     try {
-      const { solana } = window as any;
+      const { solana } = window as SolanaWindow;
       if (!solana || !solana.isPhantom) {
         console.log("Phantom Wallet tidak terdeteksi");
         return null;
@@ -45,7 +54,7 @@ export default function Home() {
   };
 
   const checkWallet = async () => {
-    const { solana } = window as any;
+    const { solana } = window as SolanaWindow;
     if (solana && solana.isPhantom) {
       try {
         const response = await solana.connect({ onlyIfTrusted: true });
@@ -62,7 +71,7 @@ export default function Home() {
 
   const connectWallet = async () => {
     try {
-      const { solana } = window as any;
+      const { solana } = window as SolanaWindow;
       if (!solana) throw new Error("Phantom Wallet tidak ditemukan");
       const response = await solana.connect();
       setWalletAddress(response.publicKey.toString());
@@ -70,14 +79,15 @@ export default function Home() {
       const newProvider = getProvider();
       setProvider(newProvider);
       if (newProvider) await setupCounter(newProvider);
-    } catch (error: any) {
-      setError(`Gagal menghubungkan wallet: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setError(`Gagal menghubungkan wallet: ${errorMessage}`);
     }
   };
 
   const disconnectWallet = () => {
     try {
-      const { solana } = window as any;
+      const { solana } = window as SolanaWindow;
       if (solana) solana.disconnect();
       setWalletAddress(null);
       setIsConnected(false);
@@ -85,12 +95,13 @@ export default function Home() {
       setCounterAccount(null);
       setError(null);
       setIsInitialized(false);
-    } catch (error: any) {
-      setError(`Error saat memutuskan: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setError(`Error saat memutuskan: ${errorMessage}`);
     }
   };
 
-  const getCounterPDA = async () => {
+  const getCounterPDA = async (): Promise<PublicKey> => {
     const [counterPDA] = await PublicKey.findProgramAddress(
       [Buffer.from("counter")],
       PROGRAM_ID
@@ -98,7 +109,7 @@ export default function Home() {
     return counterPDA;
   };
 
-  const setupCounter = async (currentProvider: any) => {
+  const setupCounter = async (currentProvider: anchor.AnchorProvider) => {
     if (!currentProvider) {
       setError("Provider tidak tersedia");
       return;
@@ -108,7 +119,8 @@ export default function Home() {
       setCounterAccount(counterPDA);
       await fetchCounter(currentProvider, counterPDA);
       setIsInitialized(true);
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       setError("Counter belum diinisialisasi. Silakan klik 'Inisialisasi Counter'.");
     }
   };
@@ -122,7 +134,7 @@ export default function Home() {
     setError(null);
     try {
       console.log("IDL yang digunakan:", IDL);
-      const program = new anchor.Program(IDL as any, PROGRAM_ID, provider);
+      const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, provider);
       console.log("Program berhasil dibuat");
       const counterPDA = await getCounterPDA();
       console.log("Counter PDA:", counterPDA.toString());
@@ -138,26 +150,29 @@ export default function Home() {
       const confirmation = await connection.confirmTransaction(tx, "confirmed");
       console.log("Konfirmasi transaksi:", confirmation);
       setCounterAccount(counterPDA);
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       await fetchCounter(provider, counterPDA);
       setIsInitialized(true);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error saat inisialisasi:", error);
-      if (error.logs) console.error("Logs:", error.logs);
-      setError(`Gagal inisialisasi: ${error.message}`);
+      if (error && typeof error === 'object' && 'logs' in error) {
+        console.error("Logs:", (error as { logs: unknown[] }).logs);
+      }
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setError(`Gagal inisialisasi: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCounter = async (currentProvider: any, counterPDA: PublicKey) => {
+  const fetchCounter = async (currentProvider: anchor.AnchorProvider, counterPDA: PublicKey) => {
     if (!currentProvider) return;
     try {
-      const program = new anchor.Program(IDL as any, PROGRAM_ID, currentProvider);
+      const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, currentProvider);
       const counterData = await program.account.counter.fetch(counterPDA);
       setCounter(counterData.count.toNumber());
       setError(null);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Gagal fetch counter:", error);
       setError("Counter belum diinisialisasi. Silakan klik 'Inisialisasi Counter'.");
       setCounter(0);
@@ -172,7 +187,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const program = new anchor.Program(IDL as any, PROGRAM_ID, provider);
+      const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, provider);
       const payment = new anchor.BN(0.01 * LAMPORTS_PER_SOL);
       const tx = await program.methods
         .increment(payment)
@@ -183,10 +198,11 @@ export default function Home() {
         })
         .rpc({ commitment: "confirmed" });
       await connection.confirmTransaction(tx, "confirmed");
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       await fetchCounter(provider, counterAccount);
-    } catch (error: any) {
-      setError(`Gagal menambah counter: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setError(`Gagal menambah counter: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -200,7 +216,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const program = new anchor.Program(IDL as any, PROGRAM_ID, provider);
+      const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, provider);
       const payment = new anchor.BN(0.01 * LAMPORTS_PER_SOL);
       const tx = await program.methods
         .decrement(payment)
@@ -211,10 +227,11 @@ export default function Home() {
         })
         .rpc({ commitment: "confirmed" });
       await connection.confirmTransaction(tx, "confirmed");
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       await fetchCounter(provider, counterAccount);
-    } catch (error: any) {
-      setError(`Gagal mengurangi counter: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setError(`Gagal mengurangi counter: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -222,7 +239,9 @@ export default function Home() {
 
   useEffect(() => {
     checkWallet();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   return (
     <main className="min-h-screen bg-white text-black">
@@ -299,49 +318,49 @@ export default function Home() {
         </div>
         
         {/* Counter display */}
-<div className="w-full max-w-md rounded-3xl bg-white border border-gray-700 p-10 mb-8">
-  <div className="flex flex-col items-center">
-    <h3 className="text-xl font-medium mb-6 text-black">Current Counter Value</h3>
-    
-    <div className="flex items-center space-x-6 mb-8">
-      <button
-        onClick={decreaseCounter}
-        className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-white text-3xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        disabled={!isConnected || !counterAccount || loading} // Tambah loading di sini
-      >
-        -
-      </button>
-      
-      <div className="text-6xl font-bold text-[#7B2CBF]">
-        {counter}
-      </div>
-      
-      <button
-        onClick={increaseCounter}
-        className="w-14 h-14 flex items-center justify-center rounded-full bg-[#7B2CBF] hover:bg-[#6A24A8] text-white text-3xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        disabled={!isConnected || !counterAccount || loading} 
-      >
-        +
-      </button>
-    </div>
-    
-    {!isInitialized && (
-      <button
-        onClick={initializeCounter}
-        className="w-full py-3 bg-[#7B2CBF] hover:bg-[#6A24A8] rounded-xl text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        disabled={loading || !isConnected}
-      >
-        Initialize Counter
-      </button>
-    )}
-  </div>
-</div>
+        <div className="w-full max-w-md rounded-3xl bg-white border border-gray-700 p-10 mb-8">
+          <div className="flex flex-col items-center">
+            <h3 className="text-xl font-medium mb-6 text-black">Current Counter Value</h3>
+            
+            <div className="flex items-center space-x-6 mb-8">
+              <button
+                onClick={decreaseCounter}
+                className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-white text-3xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!isConnected || !counterAccount || loading}
+              >
+                -
+              </button>
+              
+              <div className="text-6xl font-bold text-[#7B2CBF]">
+                {counter}
+              </div>
+              
+              <button
+                onClick={increaseCounter}
+                className="w-14 h-14 flex items-center justify-center rounded-full bg-[#7B2CBF] hover:bg-[#6A24A8] text-white text-3xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!isConnected || !counterAccount || loading} 
+              >
+                +
+              </button>
+            </div>
+            
+            {!isInitialized && (
+              <button
+                onClick={initializeCounter}
+                className="w-full py-3 bg-[#7B2CBF] hover:bg-[#6A24A8] rounded-xl text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || !isConnected}
+              >
+                Initialize Counter
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Status messages */}
         {loading && (
           <div className="w-full max-w-md bg-[#7B2CBF] bg-opacity-20 border border-[#6A24A8] rounded-xl p-4 mb-4">
             <div className="flex items-center gap-2">
-              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
               <p className="text-white text-sm">
                 Processing transaction... Please approve in your wallet.
               </p>
