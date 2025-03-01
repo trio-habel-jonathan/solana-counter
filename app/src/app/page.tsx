@@ -22,7 +22,7 @@ export default function Home() {
   const [counterAccount, setCounterAccount] = useState<PublicKey | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState<boolean>(false); // State baru
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
   const getProvider = () => {
@@ -84,7 +84,7 @@ export default function Home() {
       setProvider(null);
       setCounterAccount(null);
       setError(null);
-      setIsInitialized(false); // Reset saat disconnect
+      setIsInitialized(false);
     } catch (error: any) {
       setError(`Error saat memutuskan: ${error.message}`);
     }
@@ -107,7 +107,7 @@ export default function Home() {
       const counterPDA = await getCounterPDA();
       setCounterAccount(counterPDA);
       await fetchCounter(currentProvider, counterPDA);
-      setIsInitialized(true); // Tandai sudah diinisialisasi kalau fetch sukses
+      setIsInitialized(true);
     } catch (error: any) {
       setError("Counter belum diinisialisasi. Silakan klik 'Inisialisasi Counter'.");
     }
@@ -140,7 +140,7 @@ export default function Home() {
       setCounterAccount(counterPDA);
       await new Promise(resolve => setTimeout(resolve, 5000));
       await fetchCounter(provider, counterPDA);
-      setIsInitialized(true); // Tandai sudah diinisialisasi setelah sukses
+      setIsInitialized(true);
     } catch (error: any) {
       console.error("Error saat inisialisasi:", error);
       if (error.logs) console.error("Logs:", error.logs);
@@ -225,85 +225,153 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white p-4">
-      <h1 className="text-4xl font-bold mb-6">Penghitung Solana 🚀</h1>
-      <div className="mb-6">
-        {isConnected ? (
-          <p className="text-green-400">
-            Wallet Terhubung: {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+    <main className="min-h-screen bg-white text-black">
+      {/* Header */}
+      <header className="w-full px-6 py-4 border-b border-gray-800 bg-black flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+      
+          <h2 className="text-xl font-bold text-white">
+            Solana Counter
+          </h2>
+        </div>
+        
+        <div>
+          {isConnected ? (
+            <button
+              onClick={disconnectWallet}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-white font-medium text-sm transition-all"
+              disabled={loading}
+            >
+              {walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : "Disconnect"}
+            </button>
+          ) : (
+            <button
+              onClick={connectWallet}
+              className="px-4 py-2 bg-[#7B2CBF] hover:bg-[#6A24A8] rounded-lg text-white font-medium text-sm transition-all"
+              disabled={loading}
+            >
+              Connect Wallet
+            </button>
+          )}
+        </div>
+      </header>
+      
+      {/* Main content */}
+      <div className="container mx-auto px-4 py-12 flex flex-col items-center">
+        {/* Status card */}
+        <div className="w-full max-w-lg mb-12 rounded-2xl bg-white-800 border border-gray-700">
+          <div className="p-6 border-b border-gray-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-[#7B2CBF]' : 'bg-red-400'}`}></div>
+                <span className="text-sm font-medium text-black">
+                  {isConnected ? 'Connected to Solana Devnet' : 'Not Connected'}
+                </span>
+              </div>
+              {counterAccount && (
+                <div className="text-xs text-white bg-[#7B2CBF] px-2 py-1 rounded-md">
+                  {counterAccount.toString().slice(0, 6)}...{counterAccount.toString().slice(-4)}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="p-6">
+            <div className="flex items-center mb-4">
+              <div className="flex-1 h-px bg-gray-700"></div>
+              <span className="px-4 text-xs uppercase tracking-wider text-black font-medium">Transaction Info</span>
+              <div className="flex-1 h-px bg-gray-700"></div>
+            </div>
+            
+            <div className="flex justify-between mb-2">
+              <span className="text-sm text-black">Network</span>
+              <span className="text-sm font-medium flex items-center text-black">
+                <span className="w-2 h-2 bg-[#7B2CBF] rounded-full mr-2"></span>
+                Devnet
+              </span>
+            </div>
+            
+            <div className="flex justify-between">
+              <span className="text-sm text-black">Cost Per Transaction</span>
+              <span className="text-sm font-medium">0.01 SOL</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Counter display */}
+<div className="w-full max-w-md rounded-3xl bg-white border border-gray-700 p-10 mb-8">
+  <div className="flex flex-col items-center">
+    <h3 className="text-xl font-medium mb-6 text-black">Current Counter Value</h3>
+    
+    <div className="flex items-center space-x-6 mb-8">
+      <button
+        onClick={decreaseCounter}
+        className="w-14 h-14 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-white text-3xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={!isConnected || !counterAccount || loading} // Tambah loading di sini
+      >
+        -
+      </button>
+      
+      <div className="text-6xl font-bold text-[#7B2CBF]">
+        {counter}
+      </div>
+      
+      <button
+        onClick={increaseCounter}
+        className="w-14 h-14 flex items-center justify-center rounded-full bg-[#7B2CBF] hover:bg-[#6A24A8] text-white text-3xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={!isConnected || !counterAccount || loading} 
+      >
+        +
+      </button>
+    </div>
+    
+    {!isInitialized && (
+      <button
+        onClick={initializeCounter}
+        className="w-full py-3 bg-[#7B2CBF] hover:bg-[#6A24A8] rounded-xl text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={loading || !isConnected}
+      >
+        Initialize Counter
+      </button>
+    )}
+  </div>
+</div>
+
+        {/* Status messages */}
+        {loading && (
+          <div className="w-full max-w-md bg-[#7B2CBF] bg-opacity-20 border border-[#6A24A8] rounded-xl p-4 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+              <p className="text-white text-sm">
+                Processing transaction... Please approve in your wallet.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {error && (
+          <div className="w-full max-w-md bg-red-900 bg-opacity-20 border border-red-800 rounded-xl p-4">
+            <p className="text-red-300 text-sm">
+              {error}
+            </p>
+          </div>
+        )}
+      </div>
+      
+      {/* Footer */}
+      <footer className="w-full py-6 px-4 border-t border-gray-800 mt-auto">
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
+          <p className="text-sm text-gray-500 mb-4 md:mb-0">
+            Built with Solana, Anchor & Next.js
           </p>
-        ) : (
-          <p className="text-red-400">Wallet Belum Terhubung</p>
-        )}
-      </div>
-      <div className="mb-6 flex gap-4">
-        {isConnected ? (
-          <button
-            onClick={disconnectWallet}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white font-semibold"
-            disabled={loading}
-          >
-            Putuskan Wallet
-          </button>
-        ) : (
-          <button
-            onClick={connectWallet}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold"
-            disabled={loading}
-          >
-            Hubungkan Wallet
-          </button>
-        )}
-      </div>
-      {loading && (
-        <p className="text-yellow-400 mb-4">
-          Memproses transaksi... Harap tunggu dan setujui di wallet Anda.
-        </p>
-      )}
-      {error && (
-        <p className="text-red-400 mb-4 max-w-md text-center">
-          Error: {error}
-        </p>
-      )}
-      <div className="mb-4">
-        <p className="text-sm text-gray-400">
-          Biaya per transaksi: 0.01 SOL
-        </p>
-        {counterAccount && (
-          <p className="text-xs text-gray-500">
-            Akun Counter: {counterAccount.toString().slice(0, 8)}...
-          </p>
-        )}
-      </div>
-      <div className="mt-6 flex items-center space-x-4">
-        <button
-          onClick={decreaseCounter}
-          className="px-6 py-3 bg-gray-700 hover:bg-gray-800 rounded-lg text-white font-bold text-2xl"
-          disabled={!isConnected || !counterAccount || loading}
-        >
-          -
-        </button>
-        <span className="text-4xl font-bold">{counter}</span>
-        <button
-          onClick={increaseCounter}
-          className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white font-bold text-2xl"
-          disabled={!isConnected || !counterAccount || loading}
-        >
-          +
-        </button>
-      </div>
-      {!isInitialized && ( // Hanya tampilkan kalau belum diinisialisasi
-        <button
-          onClick={initializeCounter}
-          className="mt-6 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-semibold"
-          disabled={loading || !isConnected}
-        >
-          Inisialisasi Counter
-        </button>
-      )}
-      <div className="mt-6 text-sm text-gray-500 max-w-md text-center">
-        <p>Catatan: Aplikasi ini berjalan di Devnet. Pastikan wallet Anda di Devnet dan punya SOL Devnet.</p>
-      </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">Running on</span>
+            <span className="text-xs font-medium px-2 py-1 bg-[#7B2CBF] bg-opacity-30 border border-[#6A24A8] rounded-md text-white">
+              Solana Devnet
+            </span>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
