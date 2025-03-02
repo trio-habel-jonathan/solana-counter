@@ -27,27 +27,6 @@ interface SolanaWindow extends Window {
   };
 }
 
-// Create custom wallet adapter
-class PhantomWalletAdapter {
-  constructor(private _phantom: SolanaWindow["solana"]) {
-    if (!_phantom || !_phantom.publicKey) {
-      throw new Error("Phantom wallet not connected");
-    }
-  }
-
-  get publicKey(): PublicKey {
-    return this._phantom!.publicKey!;
-  }
-
-  async signTransaction(transaction: Transaction): Promise<Transaction> {
-    return this._phantom!.signTransaction(transaction);
-  }
-
-  async signAllTransactions(transactions: Transaction[]): Promise<Transaction[]> {
-    return this._phantom!.signAllTransactions(transactions);
-  }
-}
-
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [counter, setCounter] = useState<number>(0);
@@ -66,21 +45,18 @@ export default function Home() {
         console.log("Phantom Wallet tidak terdeteksi atau tidak terhubung");
         return null;
       }
-      
-      // Create a wallet object compatible with AnchorProvider
       const wallet = {
         publicKey: solana.publicKey,
-        signTransaction: (tx: Transaction) => solana.signTransaction(tx),
-        signAllTransactions: (txs: Transaction[]) => solana.signAllTransactions(txs)
+        signTransaction: solana.signTransaction,
+        signAllTransactions: solana.signAllTransactions,
       };
-      
       const provider = new anchor.AnchorProvider(
         connection,
         wallet,
         { preflightCommitment: "confirmed" }
       );
       return provider;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error saat membuat provider:", error);
       return null;
     }
@@ -91,32 +67,29 @@ export default function Home() {
     if (solana && solana.isPhantom) {
       try {
         const response = await solana.connect({ onlyIfTrusted: true });
-        // Remove: solana.publicKey = response.publicKey;
         setWalletAddress(response.publicKey.toString());
         setIsConnected(true);
         const newProvider = getProvider();
         setProvider(newProvider);
         if (newProvider) await setupCounter(newProvider);
-      } catch (error) {
+      } catch (error: unknown) {
         console.log("Wallet belum terhubung:", error);
       }
     }
   };
-  
+
   const connectWallet = async () => {
     try {
       const { solana } = window as SolanaWindow;
       if (!solana) throw new Error("Phantom Wallet tidak ditemukan");
       const response = await solana.connect();
-      // Remove: solana.publicKey = response.publicKey;
       setWalletAddress(response.publicKey.toString());
       setIsConnected(true);
       const newProvider = getProvider();
       setProvider(newProvider);
       if (newProvider) await setupCounter(newProvider);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setError(`Gagal menghubungkan wallet: ${errorMessage}`);
+    } catch (error: unknown) {
+      setError(`Gagal menghubungkan wallet: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -125,7 +98,6 @@ export default function Home() {
       const { solana } = window as SolanaWindow;
       if (solana) {
         solana.disconnect();
-        // Remove: solana.publicKey = undefined;
       }
       setWalletAddress(null);
       setIsConnected(false);
@@ -133,9 +105,8 @@ export default function Home() {
       setCounterAccount(null);
       setError(null);
       setIsInitialized(false);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setError(`Error saat memutuskan: ${errorMessage}`);
+    } catch (error: unknown) {
+      setError(`Error saat memutuskan: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -157,9 +128,8 @@ export default function Home() {
       setCounterAccount(counterPDA);
       await fetchCounter(currentProvider, counterPDA);
       setIsInitialized(true);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setError("Counter belum diinisialisasi. Silakan klik 'Inisialisasi Counter'.");
+    } catch (error: unknown) {
+      setError(`Counter belum diinisialisasi. Silakan klik 'Inisialisasi Counter'. ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -191,13 +161,12 @@ export default function Home() {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       await fetchCounter(provider, counterPDA);
       setIsInitialized(true);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error saat inisialisasi:", error);
       if (error && typeof error === 'object' && 'logs' in error) {
         console.error("Logs:", (error as { logs: unknown[] }).logs);
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setError(`Gagal inisialisasi: ${errorMessage}`);
+      setError(`Gagal inisialisasi: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -210,7 +179,7 @@ export default function Home() {
       const counterData = await program.account.counter.fetch(counterPDA);
       setCounter(counterData.count.toNumber());
       setError(null);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Gagal fetch counter:", error);
       setError("Counter belum diinisialisasi. Silakan klik 'Inisialisasi Counter'.");
       setCounter(0);
@@ -238,9 +207,8 @@ export default function Home() {
       await connection.confirmTransaction(tx, "confirmed");
       await new Promise((resolve) => setTimeout(resolve, 5000));
       await fetchCounter(provider, counterAccount);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setError(`Gagal menambah counter: ${errorMessage}`);
+    } catch (error: unknown) {
+      setError(`Gagal menambah counter: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -267,9 +235,8 @@ export default function Home() {
       await connection.confirmTransaction(tx, "confirmed");
       await new Promise((resolve) => setTimeout(resolve, 5000));
       await fetchCounter(provider, counterAccount);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setError(`Gagal mengurangi counter: ${errorMessage}`);
+    } catch (error: unknown) {
+      setError(`Gagal mengurangi counter: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -280,18 +247,13 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
   return (
     <main className="min-h-screen bg-white text-black">
       {/* Header */}
       <header className="w-full px-6 py-4 border-b border-gray-800 bg-black flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2">
-      
-          <h2 className="text-xl font-bold text-white">
-            Solana Counter
-          </h2>
+          <h2 className="text-xl font-bold text-white">Solana Counter</h2>
         </div>
-        
         <div>
           {isConnected ? (
             <button
@@ -312,7 +274,7 @@ export default function Home() {
           )}
         </div>
       </header>
-      
+
       {/* Main content */}
       <div className="container mx-auto px-4 py-12 flex flex-col items-center">
         {/* Status card */}
@@ -332,14 +294,12 @@ export default function Home() {
               )}
             </div>
           </div>
-          
           <div className="p-6">
             <div className="flex items-center mb-4">
               <div className="flex-1 h-px bg-gray-700"></div>
               <span className="px-4 text-xs uppercase tracking-wider text-black font-medium">Transaction Info</span>
               <div className="flex-1 h-px bg-gray-700"></div>
             </div>
-            
             <div className="flex justify-between mb-2">
               <span className="text-sm text-black">Network</span>
               <span className="text-sm font-medium flex items-center text-black">
@@ -347,19 +307,17 @@ export default function Home() {
                 Devnet
               </span>
             </div>
-            
             <div className="flex justify-between">
               <span className="text-sm text-black">Cost Per Transaction</span>
               <span className="text-sm font-medium">0.01 SOL</span>
             </div>
           </div>
         </div>
-        
+
         {/* Counter display */}
         <div className="w-full max-w-md rounded-3xl bg-white border border-gray-700 p-10 mb-8">
           <div className="flex flex-col items-center">
             <h3 className="text-xl font-medium mb-6 text-black">Current Counter Value</h3>
-            
             <div className="flex items-center space-x-6 mb-8">
               <button
                 onClick={decreaseCounter}
@@ -368,20 +326,17 @@ export default function Home() {
               >
                 -
               </button>
-              
               <div className="text-6xl font-bold text-[#7B2CBF]">
                 {counter}
               </div>
-              
               <button
                 onClick={increaseCounter}
                 className="w-14 h-14 flex items-center justify-center rounded-full bg-[#7B2CBF] hover:bg-[#6A24A8] text-white text-3xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!isConnected || !counterAccount || loading} 
+                disabled={!isConnected || !counterAccount || loading}
               >
                 +
               </button>
             </div>
-            
             {!isInitialized && (
               <button
                 onClick={initializeCounter}
@@ -398,14 +353,13 @@ export default function Home() {
         {loading && (
           <div className="w-full max-w-md bg-[#7B2CBF] bg-opacity-20 border border-[#6A24A8] rounded-xl p-4 mb-4">
             <div className="flex items-center gap-2">
-            <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
               <p className="text-white text-sm">
                 Processing transaction... Please approve in your wallet.
               </p>
             </div>
           </div>
         )}
-        
         {error && (
           <div className="w-full max-w-md bg-red-900 bg-opacity-20 border border-red-800 rounded-xl p-4">
             <p className="text-red-300 text-sm">
@@ -414,7 +368,7 @@ export default function Home() {
           </div>
         )}
       </div>
-      
+
       {/* Footer */}
       <footer className="w-full py-6 px-4 border-t border-gray-800 mt-auto">
         <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
