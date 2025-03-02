@@ -6,6 +6,7 @@ import {
   clusterApiUrl,
   SystemProgram,
   LAMPORTS_PER_SOL,
+  Transaction,
 } from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
 import IDL from "./idl.json";
@@ -20,7 +21,31 @@ interface SolanaWindow extends Window {
     isPhantom?: boolean;
     connect: (options?: { onlyIfTrusted: boolean }) => Promise<{ publicKey: PublicKey }>;
     disconnect: () => Promise<void>;
+    signTransaction: (transaction: Transaction) => Promise<Transaction>;
+    signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
+    publicKey?: PublicKey;
   };
+}
+
+// Create custom wallet adapter
+class PhantomWalletAdapter {
+  constructor(private _phantom: SolanaWindow["solana"]) {
+    if (!_phantom || !_phantom.publicKey) {
+      throw new Error("Phantom wallet not connected");
+    }
+  }
+
+  get publicKey(): PublicKey {
+    return this._phantom!.publicKey!;
+  }
+
+  async signTransaction(transaction: Transaction): Promise<Transaction> {
+    return this._phantom!.signTransaction(transaction);
+  }
+
+  async signAllTransactions(transactions: Transaction[]): Promise<Transaction[]> {
+    return this._phantom!.signAllTransactions(transactions);
+  }
 }
 
 export default function Home() {
@@ -37,13 +62,21 @@ export default function Home() {
   const getProvider = (): anchor.AnchorProvider | null => {
     try {
       const { solana } = window as SolanaWindow;
-      if (!solana || !solana.isPhantom) {
-        console.log("Phantom Wallet tidak terdeteksi");
+      if (!solana || !solana.isPhantom || !solana.publicKey) {
+        console.log("Phantom Wallet tidak terdeteksi atau tidak terhubung");
         return null;
       }
+      
+      // Create a wallet object compatible with AnchorProvider
+      const wallet = {
+        publicKey: solana.publicKey,
+        signTransaction: (tx: Transaction) => solana.signTransaction(tx),
+        signAllTransactions: (txs: Transaction[]) => solana.signAllTransactions(txs)
+      };
+      
       const provider = new anchor.AnchorProvider(
         connection,
-        solana,
+        wallet,
         { preflightCommitment: "confirmed" }
       );
       return provider;
@@ -58,6 +91,7 @@ export default function Home() {
     if (solana && solana.isPhantom) {
       try {
         const response = await solana.connect({ onlyIfTrusted: true });
+        // Remove: solana.publicKey = response.publicKey;
         setWalletAddress(response.publicKey.toString());
         setIsConnected(true);
         const newProvider = getProvider();
@@ -68,12 +102,13 @@ export default function Home() {
       }
     }
   };
-
+  
   const connectWallet = async () => {
     try {
       const { solana } = window as SolanaWindow;
       if (!solana) throw new Error("Phantom Wallet tidak ditemukan");
       const response = await solana.connect();
+      // Remove: solana.publicKey = response.publicKey;
       setWalletAddress(response.publicKey.toString());
       setIsConnected(true);
       const newProvider = getProvider();
@@ -88,7 +123,10 @@ export default function Home() {
   const disconnectWallet = () => {
     try {
       const { solana } = window as SolanaWindow;
-      if (solana) solana.disconnect();
+      if (solana) {
+        solana.disconnect();
+        // Remove: solana.publicKey = undefined;
+      }
       setWalletAddress(null);
       setIsConnected(false);
       setProvider(null);
