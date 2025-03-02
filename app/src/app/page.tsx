@@ -9,7 +9,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
-import IDL from "../../idl.json";
+import IDL from "./idl.json";
 
 const PROGRAM_ID = new PublicKey(
   "DGmJsbjsife1p3QoueUruomvJXLaYXMwqEFgE4bV4xrg"
