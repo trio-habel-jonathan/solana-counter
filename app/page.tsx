@@ -1,4 +1,18 @@
 "use client";
+
+declare global {
+  interface Window {
+    solana?: {
+      isPhantom?: boolean;
+      connect: (options?: { onlyIfTrusted: boolean }) => Promise<{ publicKey: PublicKey }>;
+      disconnect: () => Promise<void>;
+      signTransaction: (transaction: Transaction) => Promise<Transaction>;
+      signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
+      publicKey?: PublicKey;
+    };
+  }
+}
+
 import { useState, useEffect } from "react";
 import {
   Connection,
@@ -11,21 +25,18 @@ import {
 import * as anchor from "@project-serum/anchor";
 import IDL from "./idl.json";
 
+// Definisikan tipe IDL dengan lebih spesifik
+type CounterIDL = typeof IDL & anchor.Idl;
+const programIDL = IDL as CounterIDL;
+
+// Definisikan tipe untuk akun Counter berdasarkan IDL
+type CounterAccount = {
+  count: anchor.BN; // Gunakan anchor.BN untuk tipe u64
+};
+
 const PROGRAM_ID = new PublicKey(
   "DGmJsbjsife1p3QoueUruomvJXLaYXMwqEFgE4bV4xrg"
 );
-
-// Definisi tipe untuk Solana window
-interface SolanaWindow extends Window {
-  solana?: {
-    isPhantom?: boolean;
-    connect: (options?: { onlyIfTrusted: boolean }) => Promise<{ publicKey: PublicKey }>;
-    disconnect: () => Promise<void>;
-    signTransaction: (transaction: Transaction) => Promise<Transaction>;
-    signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
-    publicKey?: PublicKey;
-  };
-}
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -39,8 +50,10 @@ export default function Home() {
   const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
   const getProvider = (): anchor.AnchorProvider | null => {
+    if (typeof window === "undefined") return null;
+
     try {
-      const { solana } = window as SolanaWindow;
+      const { solana } = window;
       if (!solana || !solana.isPhantom || !solana.publicKey) {
         console.log("Phantom Wallet tidak terdeteksi atau tidak terhubung");
         return null;
@@ -63,7 +76,9 @@ export default function Home() {
   };
 
   const checkWallet = async () => {
-    const { solana } = window as SolanaWindow;
+    if (typeof window === "undefined") return;
+
+    const { solana } = window;
     if (solana && solana.isPhantom) {
       try {
         const response = await solana.connect({ onlyIfTrusted: true });
@@ -79,8 +94,10 @@ export default function Home() {
   };
 
   const connectWallet = async () => {
+    if (typeof window === "undefined") return;
+
     try {
-      const { solana } = window as SolanaWindow;
+      const { solana } = window;
       if (!solana) throw new Error("Phantom Wallet tidak ditemukan");
       const response = await solana.connect();
       setWalletAddress(response.publicKey.toString());
@@ -94,8 +111,10 @@ export default function Home() {
   };
 
   const disconnectWallet = () => {
+    if (typeof window === "undefined") return;
+
     try {
-      const { solana } = window as SolanaWindow;
+      const { solana } = window;
       if (solana) {
         solana.disconnect();
       }
@@ -112,7 +131,7 @@ export default function Home() {
 
   const getCounterPDA = async (): Promise<PublicKey> => {
     const [counterPDA] = await PublicKey.findProgramAddress(
-      [Buffer.from("counter")],
+      [Buffer.from("counter")], // Sesuai dengan seed di IDL: [99, 111, 117, 110, 116, 101, 114] = "counter"
       PROGRAM_ID
     );
     return counterPDA;
@@ -141,11 +160,8 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      console.log("IDL yang digunakan:", IDL);
-      const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, provider);
-      console.log("Program berhasil dibuat");
+      const program = new anchor.Program(programIDL, PROGRAM_ID, provider);
       const counterPDA = await getCounterPDA();
-      console.log("Counter PDA:", counterPDA.toString());
       const tx = await program.methods
         .initialize()
         .accounts({
@@ -154,9 +170,8 @@ export default function Home() {
           systemProgram: SystemProgram.programId,
         })
         .rpc({ commitment: "confirmed" });
-      console.log("Transaksi dikirim. Signature:", tx);
-      const confirmation = await connection.confirmTransaction(tx, "confirmed");
-      console.log("Konfirmasi transaksi:", confirmation);
+      console.log("Transaksi initialize dikirim. Signature:", tx);
+      await connection.confirmTransaction(tx, "confirmed");
       setCounterAccount(counterPDA);
       await new Promise((resolve) => setTimeout(resolve, 5000));
       await fetchCounter(provider, counterPDA);
@@ -175,8 +190,8 @@ export default function Home() {
   const fetchCounter = async (currentProvider: anchor.AnchorProvider, counterPDA: PublicKey) => {
     if (!currentProvider) return;
     try {
-      const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, currentProvider);
-      const counterData = await program.account.counter.fetch(counterPDA);
+      const program = new anchor.Program(programIDL, PROGRAM_ID, currentProvider);
+      const counterData = (await program.account.counter.fetch(counterPDA)) as CounterAccount;
       setCounter(counterData.count.toNumber());
       setError(null);
     } catch (error: unknown) {
@@ -194,7 +209,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, provider);
+      const program = new anchor.Program(programIDL, PROGRAM_ID, provider);
       const payment = new anchor.BN(0.01 * LAMPORTS_PER_SOL);
       const tx = await program.methods
         .increment(payment)
@@ -222,7 +237,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const program = new anchor.Program(IDL as anchor.Idl, PROGRAM_ID, provider);
+      const program = new anchor.Program(programIDL, PROGRAM_ID, provider);
       const payment = new anchor.BN(0.01 * LAMPORTS_PER_SOL);
       const tx = await program.methods
         .decrement(payment)
