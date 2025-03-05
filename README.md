@@ -56,6 +56,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 2️⃣ **Initialize Counter**: Click "Initialize Counter" to set up the counter (requires wallet connection).  
 3️⃣ **Increment/Decrement**: Use the `+` and `-` buttons to modify the counter value (**0.01 SOL fee per action**).  
 4️⃣ **Security Testing**: Access **http://localhost:3000/security-test** to simulate authentication & configuration vulnerabilities (not deployed to production).  
+- Live Demo: [https://kuzsolana.netlify.app/](https://kuzsolana.netlify.app/)
 
 ---
 
