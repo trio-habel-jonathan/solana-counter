@@ -60,7 +60,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 ---
 
 ## 🔒 Security Testing
-This project follows **OWASP Top 10** security guidelines. A dedicated **test page (`page-security-test.tsx`)** is used for local testing, with detailed findings documented in ([**security_notes.md**](https://github.com/trio-habel-jonathan/solana-counter/blob/main/security-notes.md)).
+This project follows **OWASP Top 10** security guidelines. A dedicated **test page (`page-security-test.tsx`)** is used for local testing, with detailed findings documented in [**security_notes.md**](https://github.com/trio-habel-jonathan/solana-counter/blob/main/security-notes.md).
 
 
 
