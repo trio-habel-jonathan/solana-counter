@@ -41,7 +41,7 @@
    - Wallet connection succeeded **without errors**, indicating a lack of network validation. ⚠️
 
 2. **Validation Implementation**
-   - Created `page-security-test.tsx` for isolated testing ([page-security-test.tsx](https://github.com/kuzuma/solana-counter/blob/main/app/page-security-test.tsx)).
+   - Created `page-security-test.tsx` for isolated testing ([page-security-test.tsx](https://github.com/trio-habel-jonathan/solana-counter/blob/main/app/page-security-test.tsx)).
    - Added network validation in `connectWallet` to check if `connection.rpcEndpoint` matches `clusterApiUrl("devnet")`.
    - Retested with mainnet and fake URL.
 
