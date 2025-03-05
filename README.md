@@ -39,7 +39,7 @@ A decentralized counter application built with **Solana, Anchor, Next.js, and Ty
 ```bash
 # Clone the repository
 git clone https://github.com/kuzuma/solana-counter.git
-cd solana-counter/app
+cd solana-counter
 
 # Install dependencies
 npm install
